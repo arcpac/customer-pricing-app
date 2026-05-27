@@ -1,20 +1,19 @@
 import { Router } from "express"
 import type { Request, Response } from "express"
 import { pricingProfiles } from "../data/pricingProfiles.js"
-import type { PricingProfile } from "../data/pricingProfiles.js"
+import type { PricingProfile, ProductFilter } from "../data/pricingProfiles.js"
 import { products } from "../data/products.js"
 import { customers } from "../data/customers.js"
+import { customerGroups } from "../data/customerGroups.js"
 import { computeAdjustedPrice } from "../utils/pricing.js"
 import { randomUUID } from "crypto"
 
 const router = Router()
 
-// List all profiles
 router.get("/", (_req: Request, res: Response) => {
   res.json(pricingProfiles)
 })
 
-// Get single profile
 router.get("/:id", (req: Request, res: Response) => {
   const profile = pricingProfiles.find((p) => p.id === req.params.id)
   if (!profile) {
@@ -24,24 +23,44 @@ router.get("/:id", (req: Request, res: Response) => {
   res.json(profile)
 })
 
-// Save new profile
 router.post("/", (req: Request, res: Response) => {
-  const { name, customerId, adjustmentType, adjustmentDirection, adjustmentValue, productIds } = req.body
+  const {
+    name,
+    customerScope = "individual",
+    customerId,
+    customerGroup,
+    adjustmentType,
+    adjustmentDirection,
+    adjustmentValue,
+    productScope = "explicit",
+    productFilter,
+    productIds,
+  } = req.body as {
+    name: unknown
+    customerScope?: "individual" | "group"
+    customerId?: string
+    customerGroup?: string
+    adjustmentType: unknown
+    adjustmentDirection: unknown
+    adjustmentValue: unknown
+    productScope?: "explicit" | "product" | "subCategory" | "segment" | "all"
+    productFilter?: ProductFilter
+    productIds?: string[]
+  }
 
-  // Validate required fields
   if (!name || typeof name !== "string" || name.trim() === "") {
     res.status(400).json({ error: "name is required" })
     return
   }
-  if (!customerId) {
-    res.status(400).json({ error: "customerId is required" })
+  if (!["individual", "group"].includes(customerScope)) {
+    res.status(400).json({ error: "customerScope must be 'individual' or 'group'" })
     return
   }
-  if (!["fixed", "percentage"].includes(adjustmentType)) {
+  if (!["fixed", "percentage"].includes(adjustmentType as string)) {
     res.status(400).json({ error: "adjustmentType must be 'fixed' or 'percentage'" })
     return
   }
-  if (!["increase", "decrease"].includes(adjustmentDirection)) {
+  if (!["increase", "decrease"].includes(adjustmentDirection as string)) {
     res.status(400).json({ error: "adjustmentDirection must be 'increase' or 'decrease'" })
     return
   }
@@ -49,48 +68,111 @@ router.post("/", (req: Request, res: Response) => {
     res.status(400).json({ error: "adjustmentValue must be a non-negative number" })
     return
   }
-  if (!Array.isArray(productIds) || productIds.length === 0) {
-    res.status(400).json({ error: "productIds must be a non-empty array" })
+  if (!["explicit", "product", "subCategory", "segment", "all"].includes(productScope)) {
+    res.status(400).json({ error: "productScope must be 'explicit', 'product', 'subCategory', 'segment', or 'all'" })
     return
   }
 
-  const customerExists = customers.some((c) => c.id === customerId)
-  if (!customerExists) {
-    res.status(400).json({ error: "Customer not found" })
-    return
-  }
-
-  // Build items — compute adjusted price server-side
-  const items = productIds.map((productId: string) => {
-    const product = products.find((p) => p.id === productId)
-    if (!product) return null
-    return {
-      productId,
-      basePrice: product.basePrice,
-      adjustedPrice: computeAdjustedPrice(
-        product.basePrice,
-        adjustmentType,
-        adjustmentDirection,
-        adjustmentValue
-      ),
+  // Validate customer scope
+  if (customerScope === "individual") {
+    if (!customerId) {
+      res.status(400).json({ error: "customerId is required when customerScope is 'individual'" })
+      return
     }
-  }).filter(Boolean)
+    if (!customers.some((c) => c.id === customerId)) {
+      res.status(400).json({ error: "Customer not found" })
+      return
+    }
+  } else {
+    if (!customerGroup || typeof customerGroup !== "string" || customerGroup.trim() === "") {
+      res.status(400).json({ error: "customerGroup is required when customerScope is 'group'" })
+      return
+    }
+    if (!customerGroups.some((g) => g.name === customerGroup)) {
+      res.status(400).json({ error: "Customer group not found" })
+      return
+    }
+  }
+
+  // Resolve which products this profile covers (snapshot at creation time)
+  let targetProductIds: string[]
+  if (productScope === "explicit") {
+    if (!Array.isArray(productIds) || productIds.length === 0) {
+      res.status(400).json({ error: "productIds must be a non-empty array when productScope is 'explicit'" })
+      return
+    }
+    targetProductIds = productIds
+  } else if (productScope === "product") {
+    if (!productFilter?.productId) {
+      res.status(400).json({ error: "productFilter.productId is required when productScope is 'product'" })
+      return
+    }
+    targetProductIds = [productFilter.productId]
+  } else if (productScope === "subCategory") {
+    if (!productFilter?.subCategory) {
+      res.status(400).json({ error: "productFilter.subCategory is required when productScope is 'subCategory'" })
+      return
+    }
+    targetProductIds = products
+      .filter((p) => p.subCategory.toLowerCase() === productFilter.subCategory!.toLowerCase())
+      .map((p) => p.id)
+  } else if (productScope === "segment") {
+    if (!productFilter?.segment) {
+      res.status(400).json({ error: "productFilter.segment is required when productScope is 'segment'" })
+      return
+    }
+    targetProductIds = products
+      .filter((p) => p.segment.toLowerCase() === productFilter.segment!.toLowerCase())
+      .map((p) => p.id)
+  } else {
+    // "all"
+    targetProductIds = products.map((p) => p.id)
+  }
+
+  const items = targetProductIds
+    .map((productId) => {
+      const product = products.find((p) => p.id === productId)
+      if (!product) return null
+      return {
+        productId,
+        basePrice: product.basePrice,
+        adjustedPrice: computeAdjustedPrice(
+          product.basePrice,
+          adjustmentType as "fixed" | "percentage",
+          adjustmentDirection as "increase" | "decrease",
+          adjustmentValue as number,
+        ),
+      }
+    })
+    .filter(Boolean)
 
   if (items.length === 0) {
     res.status(400).json({ error: "No valid products found" })
     return
   }
 
-  const profile: PricingProfile = {
+  const base = {
     id: randomUUID(),
-    name: name.trim(),
-    customerId,
-    adjustmentType,
-    adjustmentDirection,
-    adjustmentValue,
+    name: (name as string).trim(),
+    customerScope,
+    adjustmentType: adjustmentType as "fixed" | "percentage",
+    adjustmentDirection: adjustmentDirection as "increase" | "decrease",
+    adjustmentValue: adjustmentValue as number,
+    productScope,
     items: items as PricingProfile["items"],
     createdAt: new Date().toISOString(),
   }
+  // exactOptionalPropertyTypes requires we only include optional fields when they are defined
+  const resolvedFilter = productFilter as ProductFilter
+  const hasFilter = productScope !== "all" && productScope !== "explicit"
+  const profile: PricingProfile =
+    customerScope === "individual"
+      ? hasFilter
+        ? { ...base, customerId: customerId!, productFilter: resolvedFilter }
+        : { ...base, customerId: customerId! }
+      : hasFilter
+        ? { ...base, customerGroup: customerGroup!, productFilter: resolvedFilter }
+        : { ...base, customerGroup: customerGroup! }
 
   pricingProfiles.push(profile)
   res.status(201).json(profile)
