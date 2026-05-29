@@ -80,7 +80,9 @@ Specificity reflects commercial intent. A bespoke deal negotiated for one custom
 ## Overlap scenario
 
 > Profile A: 10% off all Wine → Independent Retailers group
+
 > Profile B: $15 off all Sparkling Wine → VIP group
+
 > Profile C: $95 custom price on Koyama Methode Brut Nature NV → Bondi Cellars (individual)
 
 Bondi Cellars is in both groups and orders Koyama Methode Brut Nature NV. Three profiles match.
@@ -126,7 +128,7 @@ New price is always floored at $0.00 and rounded to 2 decimal places.
 - **Tie-break**: newer profile wins, giving suppliers a natural override mechanism (create a new more-specific rule to override an old one)
 
   # Next steps:
-Next, I would move the in-memory store to a persistent database and add stronger validation, tests, and API documentation. I would improve the pricing engine with configurable precedence, audit history, and effective dates for profiles to support more complex commercial scenarios. I would also explore AI-assisted pricing insights, such as flagging unusually aggressive discounts, margin risks, or recommending pricing adjustments based on similar customer behaviour. 
+I would move the in-memory store to a persistent database and add stronger validation, tests, and API documentation. I would improve the pricing engine with configurable precedence, audit history, and effective dates for profiles to support more complex commercial scenarios. I would also explore AI-assisted pricing insights, such as flagging unusually aggressive discounts, margin risks, or recommending pricing adjustments based on similar customer behaviour. 
 
 # Trade-offs:
 I prioritised the core pricing workflow, pricing resolution logic, and clean UX over production infrastructure. I used an in-memory store to keep the focus on pricing behaviour, while using useQuery to improve frontend data fetching, caching, and reduce unnecessary React re-renders. I also chose server-side filtering to better support larger product catalogues. I considered commercial edge cases such as whether “All Products” should include future SKUs or remain a fixed snapshot to avoid unintended discounts.
