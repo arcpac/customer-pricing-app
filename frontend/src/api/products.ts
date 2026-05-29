@@ -3,6 +3,7 @@ import type { Product, ProductFilters } from '@/types'
 const BASE = 'http://localhost:4000'
 
 export async function getProducts(filters?: ProductFilters): Promise<Product[]> {
+  console.log('getProducts() [products.ts]')
   const params = new URLSearchParams()
   if (filters?.search) params.set('search', filters.search)
   if (filters?.sku) params.set('sku', filters.sku)
