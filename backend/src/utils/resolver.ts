@@ -81,7 +81,7 @@ export function resolvePrice(
     (p) =>
       profileCoversCustomer(p, customer) && profileCoversProduct(p, product),
   );
-  console.log("matching: ", matching);
+  console.log("matchings: ", matching);
 
   if (matching.length === 0) {
     return {
@@ -94,7 +94,7 @@ export function resolvePrice(
     .map((p) => ({ profile: p, score: customerScore(p) + productScore(p) }))
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
-      // Tie-break: newest profile wins
+
       return (
         new Date(b.profile.createdAt).getTime() -
         new Date(a.profile.createdAt).getTime()

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { ChevronDown, ChevronRight, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,6 +26,7 @@ function adjustmentLabel(item: BatchResolveItem): string {
 }
 
 export function ResolvePage() {
+  const [guidanceOpen, setGuidanceOpen] = useState(false)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [customerId, setCustomerId] = useState('')
@@ -71,6 +73,31 @@ export function ResolvePage() {
 
   return (
     <div className="space-y-6">
+      {/* Guidance Card */}
+      <div className="rounded-lg border bg-card">
+        <button
+          type="button"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-muted/40 transition-colors rounded-lg"
+          onClick={() => setGuidanceOpen((o) => !o)}
+        >
+          <span className="flex items-center gap-2">
+            <Info size={15} className="text-muted-foreground" />
+            Guidance
+          </span>
+          {guidanceOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+        </button>
+
+        {guidanceOpen && (
+          <div className="px-4 pb-4 pt-3 border-t text-sm text-muted-foreground space-y-2">
+            <ol className="list-decimal list-inside space-y-1">
+              <li><strong>Select a customer</strong> — choose the customer whose pricing profiles should be applied.</li>
+              <li><strong>Select products</strong> — search and tick the products you want to look up.</li>
+              <li>Click <strong>Resolve</strong> to see the adjusted price and which profile was matched for each product.</li>
+            </ol>
+          </div>
+        )}
+      </div>
+
       <div className="rounded-lg border bg-card">
         <div className="px-4 py-3 border-b">
           <h1 className="text-sm font-semibold">Resolve Price</h1>

@@ -1,11 +1,11 @@
-import { Router } from "express"
-import type { Request, Response } from "express"
-import { pricingProfiles } from "../data/pricingProfiles.js"
-import { products } from "../data/products.js"
-import { customers } from "../data/customers.js"
-import { resolvePrice } from "../utils/resolver.js"
+import { Router } from "express";
+import type { Request, Response } from "express";
+import { pricingProfiles } from "../data/pricingProfiles.js";
+import { products } from "../data/products.js";
+import { customers } from "../data/customers.js";
+import { resolvePrice } from "../utils/resolver.js";
 
-const router = Router()
+const router = Router();
 
 /**
  * @openapi
@@ -45,31 +45,31 @@ const router = Router()
  *               $ref: '#/components/schemas/Error'
  */
 router.get("/", (req: Request, res: Response) => {
-  const { customerId, productId } = req.query as Record<string, string>
+  const { customerId, productId } = req.query as Record<string, string>;
 
   if (!customerId) {
-    res.status(400).json({ error: "customerId is required" })
-    return
+    res.status(400).json({ error: "customerId is required" });
+    return;
   }
   if (!productId) {
-    res.status(400).json({ error: "productId is required" })
-    return
+    res.status(400).json({ error: "productId is required" });
+    return;
   }
 
-  const customer = customers.find((c) => c.id === customerId)
+  const customer = customers.find((c) => c.id === customerId);
   if (!customer) {
-    res.status(404).json({ error: "Customer not found" })
-    return
+    res.status(404).json({ error: "Customer not found" });
+    return;
   }
 
-  const product = products.find((p) => p.id === productId)
+  const product = products.find((p) => p.id === productId);
   if (!product) {
-    res.status(404).json({ error: "Product not found" })
-    return
+    res.status(404).json({ error: "Product not found" });
+    return;
   }
 
-  res.json(resolvePrice(customer, product, pricingProfiles))
-})
+  res.json(resolvePrice(customer, product, pricingProfiles));
+});
 
 /**
  * @openapi
@@ -96,35 +96,49 @@ router.get("/", (req: Request, res: Response) => {
  *         description: Customer not found
  */
 router.get("/batch", (req: Request, res: Response) => {
-  const { customerId, productIds: productIdsParam } = req.query as Record<string, string>
+  const { customerId, productIds: productIdsParam } = req.query as Record<
+    string,
+    string
+  >;
 
   if (!customerId) {
-    res.status(400).json({ error: "customerId is required" })
-    return
+    res.status(400).json({ error: "customerId is required" });
+    return;
   }
   if (!productIdsParam) {
-    res.status(400).json({ error: "productIds is required" })
-    return
+    res.status(400).json({ error: "productIds is required" });
+    return;
   }
 
-  const customer = customers.find((c) => c.id === customerId)
+  const customer = customers.find((c) => c.id === customerId);
   if (!customer) {
-    res.status(404).json({ error: "Customer not found" })
-    return
+    res.status(404).json({ error: "Customer not found" });
+    return;
   }
 
-  const productIds = productIdsParam.split(",").map((id) => id.trim()).filter(Boolean)
+  const productIds = productIdsParam
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
   if (productIds.length === 0) {
-    res.status(400).json({ error: "productIds must be a non-empty comma-separated list" })
-    return
+    res
+      .status(400)
+      .json({ error: "productIds must be a non-empty comma-separated list" });
+    return;
   }
 
   const results = productIds.map((productId) => {
-    const product = products.find((p) => p.id === productId)
+    const product = products.find((p) => p.id === productId);
     if (!product) {
-      return { productId, title: null, basePrice: null, resolvedPrice: null, message: "Product not found" }
+      return {
+        productId,
+        title: null,
+        basePrice: null,
+        resolvedPrice: null,
+        message: "Product not found",
+      };
     }
-    const resolved = resolvePrice(customer, product, pricingProfiles)
+    const resolved = resolvePrice(customer, product, pricingProfiles);
     const base = {
       productId,
       title: product.title,
@@ -133,21 +147,23 @@ router.get("/batch", (req: Request, res: Response) => {
       segment: product.segment,
       brand: product.brand,
       basePrice: product.basePrice,
-    }
+    };
     if (resolved.resolvedPrice === null) {
-      return { ...base, ...resolved }
+      return { ...base, ...resolved };
     }
-    const profile = pricingProfiles.find((p) => p.id === resolved.sourceProfileId)
+    const profile = pricingProfiles.find(
+      (p) => p.id === resolved.sourceProfileId,
+    );
     return {
       ...base,
       ...resolved,
       adjustmentType: profile?.adjustmentType,
       adjustmentDirection: profile?.adjustmentDirection,
       adjustmentValue: profile?.adjustmentValue,
-    }
-  })
+    };
+  });
 
-  res.json(results)
-})
+  res.json(results);
+});
 
-export default router
+export default router;

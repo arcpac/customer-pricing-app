@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
+import { ChevronDown, ChevronRight, Info, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -41,6 +41,9 @@ const PRODUCT_SCOPE_LABELS: Record<ProductScopeType, string> = {
 }
 
 export function PricingPage() {
+  // Guidance
+  const [guidanceOpen, setGuidanceOpen] = useState(false)
+
   // Setup Profile
   const [setupOpen, setSetupOpen] = useState(false)
   const [productPricingOpen, setProductPricingOpen] = useState(true)
@@ -224,6 +227,30 @@ export function PricingPage() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-lg border bg-card">
+        <button
+          type="button"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-muted/40 transition-colors rounded-lg"
+          onClick={() => setGuidanceOpen((o) => !o)}
+        >
+          <span className="flex items-center gap-2">
+            <Info size={15} className="text-muted-foreground" />
+            Guidance
+          </span>
+          {guidanceOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+        </button>
+
+        {guidanceOpen && (
+          <div className="px-4 pb-4 pt-3 border-t text-sm text-muted-foreground space-y-2">
+            <ol className="list-decimal list-inside space-y-1">
+              <li><strong>Setup Profile</strong> — name your profile and choose a customer or customer group.</li>
+              <li><strong>Setup Product Pricing</strong> — pick scope (one product, multiple, by sub-category, segment, or all), then define an adjustment (fixed or percentage, increase or decrease).</li>
+              <li>Review the preview table to confirm adjusted prices, then hit <strong>Save Profile</strong> (Created profile is saved in <strong>Pricing Profile</strong>).</li>
+            </ol>
+          </div>
+        )}
+      </div>
+
       {/* Section 1: Setup Profile */}
       <div className="rounded-lg border bg-card">
         <button
